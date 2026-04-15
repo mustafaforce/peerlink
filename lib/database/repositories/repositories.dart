@@ -1,0 +1,11 @@
+export 'user_repository.dart';
+export 'post_repository.dart';
+export 'comment_repository.dart';
+export 'friend_repository.dart';
+export 'resource_repository.dart';
+export 'like_repository.dart';
+export 'saved_post_repository.dart';
+export 'report_repository.dart';
+export 'resource_rating_repository.dart';
+export 'favorite_resource_repository.dart';
+export 'feed_repository.dart';
