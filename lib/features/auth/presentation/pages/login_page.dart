@@ -45,7 +45,7 @@ class _LoginPageState extends State<LoginPage> {
 
       Navigator.of(
         context,
-      ).pushNamedAndRemoveUntil(AppRouter.home, (Route<dynamic> r) => false);
+      ).pushNamedAndRemoveUntil(AppRouter.feed, (Route<dynamic> r) => false);
     } on AuthException catch (error) {
       _showMessage(error.message);
     } catch (_) {
@@ -126,6 +126,13 @@ class _LoginPageState extends State<LoginPage> {
                   ? null
                   : () => Navigator.of(context).pushNamed(AppRouter.signup),
               child: const Text('No account yet? Create one'),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: _isSubmitting
+                  ? null
+                  : () => Navigator.of(context).pushNamed(AppRouter.forgotPassword),
+              child: const Text('Forgot Password?'),
             ),
           ],
         ),
