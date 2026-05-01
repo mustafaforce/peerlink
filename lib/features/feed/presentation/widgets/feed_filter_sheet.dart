@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../app/theme/app_colors.dart';
 import '../cubit/cubit.dart';
 
 class FeedFilterSheet extends StatefulWidget {
@@ -44,6 +45,10 @@ class _FeedFilterSheetState extends State<FeedFilterSheet> {
         top: 16,
         bottom: MediaQuery.of(context).padding.bottom + 16,
       ),
+      decoration: const BoxDecoration(
+        color: AppColors.pureWhite,
+        border: Border(top: BorderSide(color: AppColors.whisperBorder)),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,7 +58,7 @@ class _FeedFilterSheetState extends State<FeedFilterSheet> {
             children: [
               const Text(
                 'Filter Feed',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
               TextButton(
                 onPressed: () {
@@ -67,34 +72,22 @@ class _FeedFilterSheetState extends State<FeedFilterSheet> {
           const SizedBox(height: 16),
           TextField(
             controller: _institutionController,
-            decoration: const InputDecoration(
-              labelText: 'Institution',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: 'Institution'),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _departmentController,
-            decoration: const InputDecoration(
-              labelText: 'Department',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: 'Department'),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _courseController,
-            decoration: const InputDecoration(
-              labelText: 'Course',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: 'Course'),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _yearController,
-            decoration: const InputDecoration(
-              labelText: 'Year',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: 'Year'),
             keyboardType: TextInputType.number,
           ),
           const SizedBox(height: 16),

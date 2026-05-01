@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../app/di/dependency_injection.dart';
 import '../../../../app/router/app_router.dart';
+import '../../../feed/presentation/pages/feed_page.dart';
+import '../../../friend/presentation/pages/friends_list_page.dart';
+import '../../../profile/presentation/pages/view_profile_page.dart';
+import '../../../resource/presentation/pages/resources_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,71 +15,71 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  bool _isSigningOut = false;
+  int _currentIndex = 0;
 
-  Future<void> _signOut() async {
-    setState(() => _isSigningOut = true);
+  @override
+  void initState() {
+    super.initState();
+    _checkAuth();
+  }
 
-    try {
-      await AppDependencies.authRepository.signOut();
-
-      if (!mounted) {
-        return;
-      }
-
+  void _checkAuth() {
+    final user = AppDependencies.authRepository.currentUser;
+    if (user == null && mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil(
         AppRouter.login,
-        (Route<dynamic> route) => false,
+        (_) => false,
       );
-    } on AuthException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(error.message)));
-    } finally {
-      if (mounted) {
-        setState(() => _isSigningOut = false);
-      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final User? user = AppDependencies.authRepository.currentUser;
+    final currentUserId = AppDependencies.authRepository.currentUserId;
+
+    final pages = <Widget>[
+      const FeedPage(),
+      const ResourcesPage(),
+      const FriendsListPage(),
+      ViewProfilePage(userId: currentUserId),
+    ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('PeerLink')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(
-                'You are logged in',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                user?.email ?? '-',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _isSigningOut ? null : _signOut,
-                child: _isSigningOut
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Sign out'),
-              ),
-            ],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: pages,
+      ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          border: Border(
+            top: BorderSide(color: Color(0x1A000000)),
           ),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.article_outlined),
+              activeIcon: Icon(Icons.article),
+              label: 'Feed',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.folder_outlined),
+              activeIcon: Icon(Icons.folder),
+              label: 'Resources',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.people_outline),
+              activeIcon: Icon(Icons.people),
+              label: 'Friends',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person),
+              label: 'Profile',
+            ),
+          ],
         ),
       ),
     );

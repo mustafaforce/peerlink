@@ -25,9 +25,7 @@ class _FriendRequestsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Friend Requests'),
-      ),
+      appBar: AppBar(title: const Text('Friend Requests')),
       body: BlocBuilder<FriendCubit, FriendState>(
         builder: (context, state) {
           if (state.status == FriendStatus.loading) {
@@ -41,6 +39,7 @@ class _FriendRequestsContent extends StatelessWidget {
           }
 
           return ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: state.pendingRequests.length,
             itemBuilder: (context, index) {
               final request = state.pendingRequests[index];

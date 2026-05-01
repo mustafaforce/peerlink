@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../../app/theme/app_colors.dart';
 
 class PostCard extends StatelessWidget {
   const PostCard({
@@ -25,8 +26,13 @@ class PostCard extends StatelessWidget {
     final isAnonymous = post['is_anonymous'] ?? false;
     final isLiked = post['is_liked'] ?? false;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.pureWhite,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.whisperBorder),
+        boxShadow: AppColors.cardShadow,
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -35,16 +41,23 @@ class PostCard extends StatelessWidget {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: Colors.grey[300],
+                  radius: 18,
+                  backgroundColor: AppColors.warmGray300.withValues(alpha: 0.2),
                   backgroundImage: isAnonymous
                       ? null
                       : (user['avatar_url'] != null
                           ? NetworkImage(user['avatar_url'])
                           : null),
                   child: isAnonymous
-                      ? const Icon(Icons.person, color: Colors.grey)
+                      ? const Icon(Icons.person, color: AppColors.warmGray500, size: 20)
                       : (user['avatar_url'] == null
-                          ? Text((user['full_name'] ?? 'U')[0].toUpperCase())
+                          ? Text(
+                              (user['full_name'] ?? 'U')[0].toUpperCase(),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            )
                           : null),
                 ),
                 const SizedBox(width: 12),
@@ -54,11 +67,17 @@ class PostCard extends StatelessWidget {
                     children: [
                       Text(
                         isAnonymous ? 'Anonymous' : (user['full_name'] ?? 'Unknown'),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
                       ),
                       Text(
                         _formatTime(post['created_at']),
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        style: TextStyle(
+                          color: AppColors.warmGray300,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -68,12 +87,12 @@ class PostCard extends StatelessWidget {
                     if (value == 'report') onReport?.call();
                     if (value == 'save') onSave?.call();
                   },
-                  itemBuilder: (context) => [
+                  itemBuilder: (_) => [
                     const PopupMenuItem(
                       value: 'save',
                       child: Row(
                         children: [
-                          Icon(Icons.bookmark_border),
+                          Icon(Icons.bookmark_border, size: 18),
                           SizedBox(width: 8),
                           Text('Save Post'),
                         ],
@@ -83,7 +102,7 @@ class PostCard extends StatelessWidget {
                       value: 'report',
                       child: Row(
                         children: [
-                          Icon(Icons.flag_outlined),
+                          Icon(Icons.flag_outlined, size: 18),
                           SizedBox(width: 8),
                           Text('Report'),
                         ],
@@ -94,11 +113,14 @@ class PostCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Text(post['content'] ?? ''),
+            Text(
+              post['content'] ?? '',
+              style: const TextStyle(fontSize: 15, height: 1.5),
+            ),
             if (post['image_urls'] != null && (post['image_urls'] as List).isNotEmpty) ...[
               const SizedBox(height: 12),
               SizedBox(
-                height: 200,
+                height: 180,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: (post['image_urls'] as List).length,
@@ -109,7 +131,7 @@ class PostCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                         child: Image.network(
                           post['image_urls'][index],
-                          height: 200,
+                          height: 180,
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -118,39 +140,53 @@ class PostCard extends StatelessWidget {
                 ),
               ),
             ],
-            if (post['institution'] != null || post['department'] != null || post['course'] != null) ...[
+            if (post['institution'] != null ||
+                post['department'] != null ||
+                post['course'] != null) ...[
               const SizedBox(height: 8),
               Wrap(
                 spacing: 4,
+                runSpacing: 4,
                 children: [
                   if (post['institution'] != null)
-                    Chip(label: Text(post['institution'], style: const TextStyle(fontSize: 10))),
+                    Chip(
+                      label: Text(
+                        post['institution'],
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ),
                   if (post['department'] != null)
-                    Chip(label: Text(post['department'], style: const TextStyle(fontSize: 10))),
+                    Chip(
+                      label: Text(
+                        post['department'],
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ),
                   if (post['course'] != null)
-                    Chip(label: Text(post['course'], style: const TextStyle(fontSize: 10))),
+                    Chip(
+                      label: Text(
+                        post['course'],
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ),
                 ],
               ),
             ],
             const Divider(height: 24),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _ActionButton(
                   icon: isLiked ? Icons.favorite : Icons.favorite_border,
                   label: '${post['likes_count'] ?? 0}',
-                  color: isLiked ? Colors.red : null,
+                  color: isLiked ? AppColors.error : AppColors.warmGray500,
                   onTap: onLike,
                 ),
+                const SizedBox(width: 8),
                 _ActionButton(
                   icon: Icons.comment_outlined,
                   label: '${post['comments_count'] ?? 0}',
+                  color: AppColors.warmGray500,
                   onTap: onComment,
-                ),
-                _ActionButton(
-                  icon: Icons.share_outlined,
-                  label: '${post['shares_count'] ?? 0}',
-                  onTap: onShare,
                 ),
               ],
             ),
@@ -189,14 +225,21 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(6),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: color),
+            Icon(icon, size: 18, color: color),
             const SizedBox(width: 4),
-            Text(label, style: TextStyle(color: color)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),

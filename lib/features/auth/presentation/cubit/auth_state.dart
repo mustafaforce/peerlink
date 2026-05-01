@@ -26,7 +26,6 @@ class AuthState extends BaseState {
   final bool isEmailVerified;
   final bool isPasswordReset;
 
-  @override
   AuthState copyWith({
     Status? status,
     String? error,

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class UserRepository {
@@ -72,6 +74,23 @@ class UserRepository {
         .from('users')
         .update({'avatar_url': avatarUrl})
         .eq('id', userId);
+  }
+
+  Future<String> uploadAvatar({
+    required String userId,
+    required String fileName,
+    required Uint8List fileBytes,
+  }) async {
+    final safeName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+    final path = '$userId/${DateTime.now().millisecondsSinceEpoch}_$safeName';
+
+    await _client.storage.from('avatars').uploadBinary(
+      path,
+      fileBytes,
+      fileOptions: const FileOptions(upsert: false),
+    );
+
+    return _client.storage.from('avatars').getPublicUrl(path);
   }
 
   Future<List<Map<String, dynamic>>> searchUsers({

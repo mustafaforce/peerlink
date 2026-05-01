@@ -33,6 +33,17 @@ class _FriendsListContent extends StatelessWidget {
             icon: const Icon(Icons.person_add),
             onPressed: () => Navigator.of(context).pushNamed(AppRouter.searchUsers),
           ),
+          IconButton(
+            icon: const Icon(Icons.person_search),
+            onPressed: () async {
+              await Navigator.of(context).pushNamed(
+                AppRouter.friendRequests,
+              );
+              if (context.mounted) {
+                context.read<FriendCubit>().loadFriends();
+              }
+            },
+          ),
         ],
       ),
       body: BlocBuilder<FriendCubit, FriendState>(
@@ -47,21 +58,24 @@ class _FriendsListContent extends StatelessWidget {
             );
           }
 
-          return ListView.builder(
-            itemCount: state.friends.length,
-            itemBuilder: (context, index) {
-              final friend = state.friends[index];
-              return FriendListItem(
-                user: friend,
-                onTap: () => Navigator.of(context).pushNamed(
-                  AppRouter.viewProfile,
-                  arguments: {'userId': friend['id']},
-                ),
-                onRemove: () {
-                  context.read<FriendCubit>().removeFriend(friend['id']);
-                },
-              );
-            },
+          return RefreshIndicator(
+            onRefresh: () => context.read<FriendCubit>().loadFriends(),
+            child: ListView.builder(
+              itemCount: state.friends.length,
+              itemBuilder: (context, index) {
+                final friend = state.friends[index];
+                return FriendListItem(
+                  user: friend,
+                  onTap: () => Navigator.of(context).pushNamed(
+                    AppRouter.viewProfile,
+                    arguments: {'userId': friend['id']},
+                  ),
+                  onRemove: () {
+                    context.read<FriendCubit>().removeFriend(friend['id']);
+                  },
+                );
+              },
+            ),
           );
         },
       ),

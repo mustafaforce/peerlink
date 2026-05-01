@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../app/di/dependency_injection.dart';
 import '../../../../database/repositories/user_repository.dart';
@@ -36,14 +39,35 @@ class ProfileCubit extends Cubit<ProfileState> {
         return;
       }
 
+      String? friendStatus;
+      if (!isOwnProfile && currentUserId != null) {
+        friendStatus = await AppDependencies.friendRepository.getFriendRequestStatus(
+          currentUserId,
+          targetUserId,
+        );
+      }
+
       final posts = await AppDependencies.postRepository.getUserPosts(targetUserId);
+      final friends = await AppDependencies.friendRepository.getFriends(targetUserId);
+      final resourceRows = await Supabase.instance.client
+          .from('resources')
+          .select('id')
+          .eq('user_id', targetUserId);
+
+      final postsCount = posts.length;
+      final friendsCount = friends.length;
+      final resourcesCount = resourceRows.length;
 
       emit(state.copyWith(
         status: ProfileStatus.success,
         user: user,
         posts: posts,
+        postsCount: postsCount,
+        friendsCount: friendsCount,
+        resourcesCount: resourcesCount,
         isOwnProfile: isOwnProfile,
         isPrivate: user['is_private'] ?? false,
+        friendStatus: friendStatus,
       ));
     } catch (e) {
       emit(state.copyWith(status: ProfileStatus.failure, error: e.toString()));
@@ -82,6 +106,26 @@ class ProfileCubit extends Cubit<ProfileState> {
         status: ProfileStatus.success,
         user: updatedUser,
       ));
+    } catch (e) {
+      emit(state.copyWith(status: ProfileStatus.failure, error: e.toString()));
+    }
+  }
+
+  Future<void> updateAvatar({
+    required String fileName,
+    required Uint8List fileBytes,
+  }) async {
+    final userId = _userRepository.currentUserId;
+    if (userId == null) return;
+
+    try {
+      final url = await _userRepository.uploadAvatar(
+        userId: userId,
+        fileName: fileName,
+        fileBytes: fileBytes,
+      );
+      await _userRepository.updateAvatarUrl(userId, url);
+      await loadProfile();
     } catch (e) {
       emit(state.copyWith(status: ProfileStatus.failure, error: e.toString()));
     }

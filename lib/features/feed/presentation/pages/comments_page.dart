@@ -1,116 +1,128 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../app/di/dependency_injection.dart';
+import '../../../../app/theme/app_colors.dart';
+import '../cubit/cubit.dart';
 
-class CommentsPage extends StatefulWidget {
+class CommentsPage extends StatelessWidget {
   const CommentsPage({super.key, required this.postId});
 
   final String postId;
 
   @override
-  State<CommentsPage> createState() => _CommentsPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => CommentCubit(postId: postId)..loadComments(),
+      child: const _CommentsBody(),
+    );
+  }
 }
 
-class _CommentsPageState extends State<CommentsPage> {
-  final _commentController = TextEditingController();
-  List<Map<String, dynamic>> _comments = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadComments();
-  }
-
-  @override
-  void dispose() {
-    _commentController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadComments() async {
-    setState(() => _isLoading = true);
-    try {
-      final comments = await AppDependencies.commentRepository.getPostComments(widget.postId);
-      if (!mounted) return;
-      setState(() {
-        _comments = comments;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _addComment() async {
-    if (_commentController.text.trim().isEmpty) return;
-
-    try {
-      final userId = AppDependencies.authRepository.currentUserId;
-      if (userId == null) return;
-
-      await AppDependencies.commentRepository.createComment(
-        postId: widget.postId,
-        userId: userId,
-        content: _commentController.text.trim(),
-      );
-
-      _commentController.clear();
-      await _loadComments();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to add comment')),
-      );
-    }
-  }
+class _CommentsBody extends StatelessWidget {
+  const _CommentsBody();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Comments'),
+      appBar: AppBar(title: const Text('Comments')),
+      body: BlocBuilder<CommentCubit, CommentState>(
+        builder: (context, state) {
+          if (state.status == CommentStatus.loading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (state.status == CommentStatus.failure) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(state.error ?? 'Failed to load comments'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => context.read<CommentCubit>().loadComments(),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          if (state.comments.isEmpty) {
+            return const Center(child: Text('No comments yet. Be the first!'));
+          }
+
+          return RefreshIndicator(
+            onRefresh: () => context.read<CommentCubit>().loadComments(),
+            child: ListView.builder(
+              itemCount: state.comments.length,
+              itemBuilder: (context, index) {
+                final comment = state.comments[index];
+                return _CommentTile(comment: comment);
+              },
+            ),
+          );
+        },
       ),
-      body: Column(
+      bottomNavigationBar: const _CommentInput(),
+    );
+  }
+}
+
+class _CommentInput extends StatefulWidget {
+  const _CommentInput();
+
+  @override
+  State<_CommentInput> createState() => _CommentInputState();
+}
+
+class _CommentInputState extends State<_CommentInput> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final content = _controller.text.trim();
+    if (content.isEmpty) return;
+    context.read<CommentCubit>().addComment(content);
+    _controller.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.whisperBorder)),
+        color: AppColors.pureWhite,
+      ),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 12,
+        bottom: MediaQuery.of(context).padding.bottom + 12,
+      ),
+      child: Row(
         children: [
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _comments.isEmpty
-                    ? const Center(child: Text('No comments yet. Be the first!'))
-                    : ListView.builder(
-                        itemCount: _comments.length,
-                        itemBuilder: (context, index) {
-                          final comment = _comments[index];
-                          return _CommentTile(comment: comment);
-                        },
-                      ),
+            child: TextField(
+              controller: _controller,
+              decoration: const InputDecoration(
+                hintText: 'Write a comment...',
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                isDense: true,
+              ),
+              onSubmitted: (_) => _submit(),
+            ),
           ),
-          Padding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 8,
-              bottom: MediaQuery.of(context).padding.bottom + 8,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _commentController,
-                    decoration: const InputDecoration(
-                      hintText: 'Write a comment...',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: _addComment,
-                  icon: const Icon(Icons.send),
-                ),
-              ],
-            ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: _submit,
+            icon: const Icon(Icons.send),
+            color: AppColors.notionBlue,
           ),
         ],
       ),
@@ -126,26 +138,53 @@ class _CommentTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = comment['users'] ?? {};
-    
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: Colors.grey[300],
-        backgroundImage: user['avatar_url'] != null
-            ? NetworkImage(user['avatar_url'])
-            : null,
-        child: user['avatar_url'] == null
-            ? Text((user['full_name'] ?? 'U')[0].toUpperCase())
-            : null,
-      ),
-      title: Text(user['full_name'] ?? 'Unknown'),
-      subtitle: Column(
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(comment['content'] ?? ''),
-          const SizedBox(height: 4),
-          Text(
-            _formatTime(comment['created_at']),
-            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: AppColors.warmGray300.withValues(alpha: 0.2),
+            backgroundImage: user['avatar_url'] != null
+                ? NetworkImage(user['avatar_url'])
+                : null,
+            child: user['avatar_url'] == null
+                ? Text(
+                    (user['full_name'] ?? 'U')[0].toUpperCase(),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  )
+                : null,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      user['full_name'] ?? 'Unknown',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _formatTime(comment['created_at']),
+                      style: TextStyle(color: AppColors.warmGray300, fontSize: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  comment['content'] ?? '',
+                  style: const TextStyle(fontSize: 15),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -157,9 +196,9 @@ class _CommentTile extends StatelessWidget {
     final dt = DateTime.tryParse(time.toString());
     if (dt == null) return '';
     final diff = DateTime.now().difference(dt);
-    if (diff.inDays > 0) return '${diff.inDays}d ago';
-    if (diff.inHours > 0) return '${diff.inHours}h ago';
-    if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
-    return 'Just now';
+    if (diff.inDays > 0) return '${diff.inDays}d';
+    if (diff.inHours > 0) return '${diff.inHours}h';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}m';
+    return 'now';
   }
 }

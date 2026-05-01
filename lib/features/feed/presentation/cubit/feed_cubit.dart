@@ -26,7 +26,7 @@ class FeedCubit extends Cubit<FeedState> {
         course: state.filter['course'],
         year: state.filter['year'],
       );
-      
+
       emit(state.copyWith(
         status: FeedStatus.success,
         posts: posts,
@@ -93,15 +93,39 @@ class FeedCubit extends Cubit<FeedState> {
     }
   }
 
+  void _updatePostInList(String postId, Map<String, dynamic> Function(Map<String, dynamic>) updateFn) {
+    final updated = state.posts.map((post) {
+      if (post['id'] == postId) return updateFn(post);
+      return post;
+    }).toList();
+
+    emit(state.copyWith(posts: updated));
+  }
+
   Future<void> likePost(String postId) async {
     final userId = _feedRepository.currentUserId;
     if (userId == null) return;
 
+    _updatePostInList(postId, (post) {
+      final likesCount = (post['likes_count'] as num?)?.toInt() ?? 0;
+      return {
+        ...post,
+        'is_liked': true,
+        'likes_count': likesCount + 1,
+      };
+    });
+
     try {
       await _feedRepository.likePost(postId, userId);
-      await loadFeed(refresh: true);
     } catch (e) {
-      emit(state.copyWith(status: FeedStatus.failure, error: e.toString()));
+      _updatePostInList(postId, (post) {
+        final likesCount = (post['likes_count'] as num?)?.toInt() ?? 0;
+        return {
+          ...post,
+          'is_liked': false,
+          'likes_count': (likesCount - 1).clamp(0, likesCount),
+        };
+      });
     }
   }
 
@@ -109,11 +133,26 @@ class FeedCubit extends Cubit<FeedState> {
     final userId = _feedRepository.currentUserId;
     if (userId == null) return;
 
+    _updatePostInList(postId, (post) {
+      final likesCount = (post['likes_count'] as num?)?.toInt() ?? 0;
+      return {
+        ...post,
+        'is_liked': false,
+        'likes_count': (likesCount - 1).clamp(0, likesCount),
+      };
+    });
+
     try {
       await _feedRepository.unlikePost(postId, userId);
-      await loadFeed(refresh: true);
     } catch (e) {
-      emit(state.copyWith(status: FeedStatus.failure, error: e.toString()));
+      _updatePostInList(postId, (post) {
+        final likesCount = (post['likes_count'] as num?)?.toInt() ?? 0;
+        return {
+          ...post,
+          'is_liked': true,
+          'likes_count': likesCount + 1,
+        };
+      });
     }
   }
 

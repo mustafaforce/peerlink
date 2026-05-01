@@ -20,13 +20,15 @@ class ViewProfilePage extends StatelessWidget {
       create: (context) => ProfileCubit(
         userRepository: AppDependencies.userRepository,
       )..loadProfile(userId: userId),
-      child: const _ViewProfileContent(),
+      child: _ViewProfileContent(userId: userId),
     );
   }
 }
 
 class _ViewProfileContent extends StatelessWidget {
-  const _ViewProfileContent();
+  _ViewProfileContent({this.userId});
+
+  final String? userId;
 
   @override
   Widget build(BuildContext context) {
@@ -69,10 +71,18 @@ class _ViewProfileContent extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ProfileHeader(user: user),
-                ProfileStats(user: user),
+                ProfileStats(
+                  postsCount: state.postsCount,
+                  friendsCount: state.friendsCount,
+                  resourcesCount: state.resourcesCount,
+                ),
                 ProfileActions(
                   user: user,
                   isOwnProfile: state.isOwnProfile,
+                  friendStatus: state.friendStatus,
+                  onRefresh: () => context.read<ProfileCubit>().loadProfile(
+                    userId: userId,
+                  ),
                 ),
                 const Divider(height: 32),
                 Padding(

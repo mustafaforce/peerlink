@@ -4,8 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../app/di/dependency_injection.dart';
 import '../../../../app/router/app_router.dart';
 import '../cubit/cubit.dart';
-import '../widgets/post_card.dart';
 import '../widgets/feed_filter_sheet.dart';
+import '../widgets/post_card.dart';
 
 class FeedPage extends StatelessWidget {
   const FeedPage({super.key});
@@ -71,7 +71,7 @@ class _FeedContent extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.article_outlined, size: 64, color: Colors.grey),
+                  const Icon(Icons.article_outlined, size: 64, color: Color(0xFFA39E98)),
                   const SizedBox(height: 16),
                   const Text('No posts yet'),
                   const SizedBox(height: 8),
@@ -95,7 +95,7 @@ class _FeedContent extends StatelessWidget {
                 return false;
               },
               child: ListView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 itemCount: state.posts.length + (state.hasMore ? 1 : 0),
                 itemBuilder: (context, index) {
                   if (index == state.posts.length) {
@@ -108,23 +108,26 @@ class _FeedContent extends StatelessWidget {
                   }
 
                   final post = state.posts[index];
-                  return PostCard(
-                    post: post,
-                    onLike: () {
-                      final isLiked = post['is_liked'] ?? false;
-                      if (isLiked) {
-                        context.read<FeedCubit>().unlikePost(post['id']);
-                      } else {
-                        context.read<FeedCubit>().likePost(post['id']);
-                      }
-                    },
-                    onComment: () => Navigator.of(context).pushNamed(
-                      AppRouter.comments,
-                      arguments: {'postId': post['id']},
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: PostCard(
+                      post: post,
+                      onLike: () {
+                        final isLiked = post['is_liked'] ?? false;
+                        if (isLiked) {
+                          context.read<FeedCubit>().unlikePost(post['id']);
+                        } else {
+                          context.read<FeedCubit>().likePost(post['id']);
+                        }
+                      },
+                      onComment: () => Navigator.of(context).pushNamed(
+                        AppRouter.comments,
+                        arguments: {'postId': post['id']},
+                      ),
+                      onSave: () => context.read<FeedCubit>().savePost(post['id']),
+                      onReport: () => _showReportDialog(context, post['id']),
+                      onShare: () {},
                     ),
-                    onSave: () => context.read<FeedCubit>().savePost(post['id']),
-                    onReport: () => _showReportDialog(context, post['id']),
-                    onShare: () {},
                   );
                 },
               ),
@@ -133,6 +136,7 @@ class _FeedContent extends StatelessWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'feed_fab',
         onPressed: () => Navigator.of(context).pushNamed(AppRouter.createPost),
         child: const Icon(Icons.add),
       ),
@@ -142,7 +146,7 @@ class _FeedContent extends StatelessWidget {
   void _showFilterSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      builder: (bottomSheetContext) => BlocProvider.value(
+      builder: (sheetContext) => BlocProvider.value(
         value: context.read<FeedCubit>(),
         child: const FeedFilterSheet(),
       ),
@@ -151,7 +155,7 @@ class _FeedContent extends StatelessWidget {
 
   void _showReportDialog(BuildContext context, String postId) {
     final reasons = ['spam', 'inappropriate', 'harassment', 'copyright', 'other'];
-    
+
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(

@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/services/logger_service.dart';
+
 class FriendRepository {
   FriendRepository({required SupabaseClient client}) : _client = client;
 
@@ -78,8 +80,39 @@ class FriendRepository {
   }
 
   Future<List<Map<String, dynamic>>> getFriends(String userId) async {
-    final response = await _client.rpc('get_friends', params: {'user_id': userId});
-    return response ?? [];
+    log.i('getFriends called for userId: $userId');
+
+    final requests = await _client
+        .from('friend_requests')
+        .select('sender_id, receiver_id')
+        .eq('status', 'accepted')
+        .or('sender_id.eq.$userId,receiver_id.eq.$userId');
+
+    log.d('friend_requests found: ${requests.length}');
+
+    final friendIds = <String>{};
+    for (final req in requests) {
+      if (req['sender_id'] == userId) {
+        friendIds.add(req['receiver_id'] as String);
+      } else {
+        friendIds.add(req['sender_id'] as String);
+      }
+    }
+
+    if (friendIds.isEmpty) {
+      log.w('No friend IDs found');
+      return [];
+    }
+
+    log.d('friend IDs: $friendIds');
+
+    final users = await _client
+        .from('users')
+        .select()
+        .inFilter('id', friendIds.toList());
+
+    log.i('getFriends returning ${users.length} users');
+    return users;
   }
 
   Future<List<Map<String, dynamic>>> getBlockedUsers(String userId) async {
@@ -101,6 +134,21 @@ class FriendRepository {
       'blocked_id': blockedId,
     });
     return response ?? false;
+  }
+
+  Future<String?> getFriendRequestStatus(String senderId, String receiverId) async {
+    final rows = await _client
+        .from('friend_requests')
+        .select('status')
+        .or('and(sender_id.eq.$senderId,receiver_id.eq.$receiverId),and(sender_id.eq.$receiverId,receiver_id.eq.$senderId)');
+
+    if (rows.isEmpty) return null;
+
+    final statuses = rows.map((r) => r['status'] as String).toSet();
+    if (statuses.contains('accepted')) return 'accepted';
+    if (statuses.contains('pending')) return 'pending';
+    if (statuses.contains('blocked')) return 'blocked';
+    return null;
   }
 
   Future<List<Map<String, dynamic>>> searchUsers({

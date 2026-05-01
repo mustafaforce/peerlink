@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../database/repositories/resource_repository.dart';
 import 'resource_state.dart';
@@ -160,8 +161,15 @@ class ResourceCubit extends Cubit<ResourceState> {
 
   Future<void> downloadResource(String resourceId) async {
     try {
+      final resource = state.resources.firstWhere(
+        (r) => r['id'] == resourceId,
+        orElse: () => <String, dynamic>{},
+      );
+      final fileUrl = resource['file_url'] as String?;
+      if (fileUrl != null) {
+        await launchUrl(Uri.parse(fileUrl), mode: LaunchMode.externalApplication);
+      }
       await _resourceRepository.incrementDownloads(resourceId);
-      await loadResources(refresh: true);
     } catch (e) {
       emit(state.copyWith(status: ResourceStatus.failure, error: e.toString()));
     }

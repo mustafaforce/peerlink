@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/theme/app_colors.dart';
+
 class ProfileHeader extends StatelessWidget {
   const ProfileHeader({super.key, required this.user});
 
@@ -15,57 +17,56 @@ class ProfileHeader extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 50,
-              backgroundColor: Colors.grey[300],
+              backgroundColor: AppColors.warmGray300.withValues(alpha: 0.2),
               backgroundImage: user['avatar_url'] != null
                   ? NetworkImage(user['avatar_url'])
                   : null,
               child: user['avatar_url'] == null
                   ? Text(
                       (user['full_name'] ?? 'U')[0].toUpperCase(),
-                      style: const TextStyle(fontSize: 36),
+                      style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w700),
                     )
                   : null,
             ),
             const SizedBox(height: 12),
             Text(
               user['full_name'] ?? 'Unknown',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 4),
             Text(
               user['email'] ?? '',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[600],
-                  ),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             if (user['bio'] != null && user['bio'].toString().isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
                 user['bio'],
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.warmGray500,
+                    ),
               ),
             ],
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Wrap(
               spacing: 8,
+              runSpacing: 4,
               children: [
                 if (user['institution'] != null)
                   Chip(
+                    avatar: const Icon(Icons.school, size: 14),
                     label: Text(user['institution']),
-                    avatar: const Icon(Icons.school, size: 16),
                   ),
                 if (user['department'] != null)
                   Chip(
+                    avatar: const Icon(Icons.book, size: 14),
                     label: Text(user['department']),
-                    avatar: const Icon(Icons.book, size: 16),
                   ),
                 if (user['year'] != null)
                   Chip(
+                    avatar: const Icon(Icons.calendar_today, size: 14),
                     label: Text('Year ${user['year']}'),
-                    avatar: const Icon(Icons.calendar_today, size: 16),
                   ),
               ],
             ),

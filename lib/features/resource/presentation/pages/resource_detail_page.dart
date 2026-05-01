@@ -1,175 +1,199 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../app/di/dependency_injection.dart';
+import '../../../../app/theme/app_colors.dart';
+import '../cubit/cubit.dart';
 
-class ResourceDetailPage extends StatefulWidget {
+class ResourceDetailPage extends StatelessWidget {
   const ResourceDetailPage({super.key, required this.resourceId});
 
   final String resourceId;
 
   @override
-  State<ResourceDetailPage> createState() => _ResourceDetailPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => ResourceDetailCubit(resourceId: resourceId)..loadResource(),
+      child: const _DetailContent(),
+    );
+  }
 }
 
-class _ResourceDetailPageState extends State<ResourceDetailPage> {
-  Map<String, dynamic>? _resource;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadResource();
-  }
-
-  Future<void> _loadResource() async {
-    try {
-      final resource = await AppDependencies.resourceRepository.getResourceById(widget.resourceId);
-      if (!mounted) return;
-      setState(() {
-        _resource = resource;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-    }
-  }
+class _DetailContent extends StatelessWidget {
+  const _DetailContent();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Resource Details'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _resource == null
-              ? const Center(child: Text('Resource not found'))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      appBar: AppBar(title: const Text('Resource Details')),
+      body: BlocBuilder<ResourceDetailCubit, ResourceDetailState>(
+        builder: (context, state) {
+          if (state.status == ResourceDetailStatus.loading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (state.status == ResourceDetailStatus.failure) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(state.error ?? 'Failed to load resource'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => context.read<ResourceDetailCubit>().loadResource(),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final resource = state.resource;
+          if (resource == null) {
+            return const Center(child: Text('Resource not found'));
+          }
+
+          final avgRating = resource['ratings_count'] != null &&
+                  resource['ratings_count'] > 0
+              ? (resource['total_rating'] / resource['ratings_count'])
+                  .toStringAsFixed(1)
+              : null;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  resource['title'] ?? '',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: AppColors.warmGray300.withValues(alpha: 0.2),
+                      child: const Icon(Icons.person, size: 20),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      resource['users']?['full_name'] ?? 'Unknown',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+                if (resource['description'] != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    resource['description'],
+                    style: const TextStyle(
+                      fontSize: 15,
+                      height: 1.5,
+                      color: AppColors.warmGray500,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    if (resource['institution'] != null)
+                      Chip(label: Text(resource['institution'])),
+                    if (resource['department'] != null)
+                      Chip(label: Text(resource['department'])),
+                    if (resource['course'] != null)
+                      Chip(label: Text(resource['course'])),
+                    if (resource['subject'] != null)
+                      Chip(label: Text(resource['subject'])),
+                    Chip(label: Text(resource['file_type'] ?? 'FILE')),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: AppColors.whisperBorder),
+                      bottom: BorderSide(color: AppColors.whisperBorder),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      Text(
-                        _resource!['title'] ?? '',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                      _StatItem(
+                        icon: Icons.download,
+                        label: '${resource['downloads_count'] ?? 0}',
+                        title: 'Downloads',
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor: Colors.grey[300],
-                            child: const Icon(Icons.person),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            (_resource!['users']?['full_name'] ?? 'Unknown'),
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
+                      _StatItem(
+                        icon: Icons.star,
+                        label: avgRating ?? '0.0',
+                        title: 'Rating',
                       ),
-                      const SizedBox(height: 16),
-                      if (_resource!['description'] != null) ...[
-                        Text(_resource!['description']),
-                        const SizedBox(height: 16),
-                      ],
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          if (_resource!['institution'] != null)
-                            Chip(label: Text(_resource!['institution'])),
-                          if (_resource!['department'] != null)
-                            Chip(label: Text(_resource!['department'])),
-                          if (_resource!['course'] != null)
-                            Chip(label: Text(_resource!['course'])),
-                          if (_resource!['subject'] != null)
-                            Chip(label: Text(_resource!['subject'])),
-                          Chip(label: Text(_resource!['file_type'] ?? 'Unknown')),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _StatItem(
-                            icon: Icons.download,
-                            label: '${_resource!['downloads_count'] ?? 0}',
-                            title: 'Downloads',
-                          ),
-                          _StatItem(
-                            icon: Icons.star,
-                            label: _resource!['ratings_count'] != null && _resource!['ratings_count'] > 0
-                                ? '${(_resource!['total_rating'] / _resource!['ratings_count']).toStringAsFixed(1)}'
-                                : '0.0',
-                            title: 'Rating',
-                          ),
-                          _StatItem(
-                            icon: Icons.favorite,
-                            label: '${_resource!['favorites_count'] ?? 0}',
-                            title: 'Favorites',
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      _buildRatingSection(),
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            AppDependencies.resourceRepository.incrementDownloads(widget.resourceId);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Download started')),
-                            );
-                          },
-                          icon: const Icon(Icons.download),
-                          label: const Text('Download Resource'),
-                        ),
+                      _StatItem(
+                        icon: Icons.favorite,
+                        label: '${resource['favorites_count'] ?? 0}',
+                        title: 'Favorites',
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Rate this Resource',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                _StarRating(
+                  currentRating: state.userRating,
+                  onRate: (rating) {
+                    context.read<ResourceDetailCubit>().rateResource(rating);
+                  },
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      context.read<ResourceDetailCubit>().download();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Download started')),
+                      );
+                    },
+                    icon: const Icon(Icons.download),
+                    label: const Text('Download Resource'),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
+}
 
-  Widget _buildRatingSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Rate this Resource', style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        Row(
-          children: List.generate(5, (index) {
-            return IconButton(
-              icon: const Icon(Icons.star_border),
-              onPressed: () async {
-                final userId = AppDependencies.authRepository.currentUserId;
-                if (userId == null) return;
-                await AppDependencies.resourceRepository.rateResource(
-                  resourceId: widget.resourceId,
-                  userId: userId,
-                  rating: index + 1,
-                );
-                await _loadResource();
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Rated ${index + 1} stars')),
-                );
-              },
-            );
-          }),
-        ),
-      ],
+class _StarRating extends StatelessWidget {
+  const _StarRating({required this.currentRating, required this.onRate});
+
+  final int currentRating;
+  final void Function(int) onRate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: List.generate(5, (index) {
+        final starIndex = index + 1;
+        final isFilled = starIndex <= currentRating;
+        return IconButton(
+          icon: Icon(
+            isFilled ? Icons.star : Icons.star_border,
+            color: isFilled ? AppColors.orange : AppColors.warmGray300,
+          ),
+          onPressed: () => onRate(starIndex),
+        );
+      }),
     );
   }
 }
@@ -189,10 +213,22 @@ class _StatItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, color: Theme.of(context).primaryColor),
+        Icon(icon, color: AppColors.notionBlue),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-        Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
+        ),
+        Text(
+          title,
+          style: TextStyle(
+            color: AppColors.warmGray300,
+            fontSize: 12,
+          ),
+        ),
       ],
     );
   }

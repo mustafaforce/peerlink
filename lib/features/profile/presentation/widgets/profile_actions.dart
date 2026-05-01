@@ -1,38 +1,59 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/di/dependency_injection.dart';
+import '../../../../app/router/app_router.dart';
 
 class ProfileActions extends StatelessWidget {
-  const ProfileActions({super.key, required this.user, required this.isOwnProfile});
+  const ProfileActions({
+    super.key,
+    required this.user,
+    required this.isOwnProfile,
+    this.friendStatus,
+    this.onRefresh,
+  });
 
   final Map<String, dynamic> user;
   final bool isOwnProfile;
+  final String? friendStatus;
+  final VoidCallback? onRefresh;
 
   @override
   Widget build(BuildContext context) {
     if (isOwnProfile) {
       return Padding(
-        padding: const EdgeInsets.all(16),
-        child: OutlinedButton.icon(
-          onPressed: () {
-            // Navigate to edit profile
-          },
-          icon: const Icon(Icons.edit),
-          label: const Text('Edit Profile'),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () =>
+                Navigator.of(context).pushNamed(AppRouter.editProfile),
+            icon: const Icon(Icons.edit, size: 18),
+            label: const Text('Edit Profile'),
+          ),
         ),
       );
     }
 
+    if (friendStatus == 'accepted') {
+      return const SizedBox.shrink();
+    }
+
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
           Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () => _sendFriendRequest(context),
-              icon: const Icon(Icons.person_add),
-              label: const Text('Add Friend'),
-            ),
+            child: friendStatus == 'pending'
+                ? OutlinedButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.check, size: 18),
+                    label: const Text('Request Sent'),
+                  )
+                : ElevatedButton.icon(
+                    onPressed: () => _sendFriendRequest(context),
+                    icon: const Icon(Icons.person_add, size: 18),
+                    label: const Text('Add Friend'),
+                  ),
           ),
           const SizedBox(width: 12),
           IconButton(
@@ -50,72 +71,72 @@ class ProfileActions extends StatelessWidget {
       final currentUserId = AppDependencies.authRepository.currentUserId;
       if (currentUserId == null) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please login to send a friend request')),
-        );
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(content: Text('Please login first')));
         return;
       }
-
       await AppDependencies.friendRepository.sendFriendRequest(
         senderId: currentUserId,
         receiverId: user['id'],
       );
+      onRefresh?.call();
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Friend request sent')),
-      );
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('Friend request sent')));
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed: $e')),
-      );
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text('Failed: $e')));
     }
   }
 
   Future<void> _blockUser(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Block User'),
         content: const Text('Are you sure you want to block this user?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Block'),
           ),
         ],
       ),
     );
 
-    if (confirmed == true) {
-      try {
-        final currentUserId = AppDependencies.authRepository.currentUserId;
-        if (currentUserId == null) {
-          if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please login to block users')),
-          );
-          return;
-        }
+    if (confirmed != true) return;
 
-        await AppDependencies.friendRepository.blockUser(
-          blockerId: currentUserId,
-          blockedId: user['id'],
-        );
+    try {
+      final currentUserId = AppDependencies.authRepository.currentUserId;
+      if (currentUserId == null) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User blocked')),
-        );
-      } catch (e) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
-        );
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(content: Text('Please login first')));
+        return;
       }
+      await AppDependencies.friendRepository.blockUser(
+        blockerId: currentUserId,
+        blockedId: user['id'],
+      );
+      onRefresh?.call();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('User blocked')));
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text('Failed: $e')));
     }
   }
 }

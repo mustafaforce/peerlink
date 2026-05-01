@@ -1,29 +1,36 @@
 import 'package:flutter/material.dart';
 
-class ProfileStats extends StatelessWidget {
-  const ProfileStats({super.key, required this.user});
+import '../../../../app/theme/app_colors.dart';
 
-  final Map<String, dynamic> user;
+class ProfileStats extends StatelessWidget {
+  const ProfileStats({
+    super.key,
+    this.postsCount = 0,
+    this.friendsCount = 0,
+    this.resourcesCount = 0,
+  });
+
+  final int postsCount;
+  final int friendsCount;
+  final int resourcesCount;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: AppColors.whisperBorder),
+          bottom: BorderSide(color: AppColors.whisperBorder),
+        ),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _StatItem(
-            label: 'Posts',
-            value: user['posts_count']?.toString() ?? '0',
-          ),
-          _StatItem(
-            label: 'Friends',
-            value: user['friends_count']?.toString() ?? '0',
-          ),
-          _StatItem(
-            label: 'Resources',
-            value: user['resources_count']?.toString() ?? '0',
-          ),
+          _StatItem(label: 'Posts', value: '$postsCount'),
+          _StatItem(label: 'Friends', value: '$friendsCount'),
+          _StatItem(label: 'Resources', value: '$resourcesCount'),
         ],
       ),
     );
@@ -40,19 +47,9 @@ class _StatItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(
-          value,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-        ),
+        Text(value, style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
-              ),
-        ),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
       ],
     );
   }

@@ -110,6 +110,10 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  void resetStatus() {
+    emit(state.copyWith(status: Status.initial));
+  }
+
   bool get isEmailConfirmed => _authRepository.isEmailConfirmed;
 
   String? get currentUserId => _authRepository.currentUserId;
